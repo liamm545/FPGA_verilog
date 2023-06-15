@@ -1,0 +1,130 @@
+//It is a code that expresses four desired numbers in fpga in infinite repetition.
+
+module seg_module(
+    input clk, // clock
+    input rst, // reset
+    output reg [6:0] reg_seg, //cathode patterns of the 7-segment LED display
+    output reg [2:0] reg_digit
+    );
+   
+    reg [7:0] num_what; // The number you want
+    
+    reg [24:0] tmp;  //one_second_counter
+    reg i_clk;
+    reg [1:0] seg_cnt;
+
+    reg [3:0] num; //1 digit to print, 
+    // If num_what is 231, you have to print it out separately like 2, 3, 1.
+    // So this variable is exist.
+
+    reg [27:0] show_cnt;
+                
+    
+    //Clock Setting
+    always @ (posedge clk) begin
+        if (!rst) begin
+            show_cnt <= 28'b0;
+        end
+        else begin
+            show_cnt <= show_cnt + 28'b1;
+        end
+    end
+    
+    
+    //Numbers 125, 68, 3, 0 are repeated infinitely
+    //If you change the number, you can also display the number you want.
+    always @ (posedge clk) begin
+        if (show_cnt[27:26] == 2'b00) begin
+            num_what = 8'b01111101; //125
+        end
+        else if (show_cnt[27:26] == 2'b01) begin
+            num_what = 8'b01000100;  //68
+        end
+        else if (show_cnt[27:26] == 2'b10) begin
+            num_what = 8'b00000011; //3
+        end
+        else if (show_cnt[27:26] == 2'b11) begin
+            num_what = 8'b00000000; //0
+        end
+    end
+   
+   
+    always @(posedge clk)
+    begin
+        if(!rst) begin
+            tmp <= 0;
+            i_clk <= 0;
+            end
+        else begin
+            if(tmp == 25'h17D7840) begin
+                 tmp <= 0;
+                 i_clk <= ~i_clk;
+                 end
+                 else begin
+                 tmp <= tmp + 1;
+                 if (tmp % 32 == 0) // Toggle i_clk every 32 clock cycles.
+                    i_clk <= ~i_clk;
+                 end
+        end
+    end
+
+
+    always @ (posedge i_clk) begin
+    if(!rst) begin
+        seg_cnt <=0;
+    end
+    else begin
+        if (seg_cnt == 2'b11) begin
+            seg_cnt <= 0;
+        end
+        else begin
+            seg_cnt <= seg_cnt + 1;
+            count <= count + 1;
+        end
+       end
+    end
+
+
+    always @(posedge i_clk) begin
+   // computing which number to dispaly (units place, tens place, hundred's place)
+      case(seg_cnt)
+        2'b00 : begin 
+            num = num_what - ((num_what)/10)*10; // units place 
+            reg_digit = 3'b001; 
+        end      
+        2'b01 : begin 
+            num = (num_what - ((num_what)/100)*100)/10; // tens place 
+            if((num_what - ((num_what)/100)*100)/10  ==   0)
+                reg_digit = 3'b000; 
+            else 
+                reg_digit = 3'b010; 
+        end      
+        2'b10 : begin 
+            num = (num_what)/100; // hundred's place
+            if((num_what)/100  ==   0)
+                reg_digit = 3'b000; 
+            else 
+                reg_digit = 3'b100; 
+        end      
+        2'b11 : begin 
+            num = 0;   // 2^8 = 256 < 1000 thousand's place is not used
+            reg_digit = 3'b000; 
+        end      
+      endcase
+        
+    // patterns of the 7-segment LED display
+      case(num)
+      4'b0000: begin reg_seg = 7'b0111111; end   // 0
+      4'b0001: begin reg_seg = 7'b0000110; end   // 1
+      4'b0010: begin reg_seg = 7'b1011011; end   // 2
+      4'b0011: begin reg_seg = 7'b1001111; end   // 3
+      4'b0100: begin reg_seg = 7'b1100110; end    // 4
+      4'b0101: begin reg_seg = 7'b1101101; end    // 5
+      4'b0110: begin reg_seg = 7'b1111101; end    // 6
+      4'b0111: begin reg_seg = 7'b0100111; end    // 7
+      4'b1000: begin reg_seg = 7'b1111111; end    // 8
+      4'b1001: begin reg_seg = 7'b1101111; end    // 9
+      default: begin reg_seg = 7'b0111111; end   // 0
+      endcase
+     end
+endmodule
